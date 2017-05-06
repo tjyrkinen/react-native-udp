@@ -10,18 +10,20 @@ This module is used by [Tradle](https://github.com/tradle)
 
 * In your project dir:
 ```
-npm install --save react-native-udp
+npm install --save react-native-udpsocket
 ```
 
 ## Link in the native dependency
 
 ```
-react-native link react-native-udp
+react-native link react-native-udpsocket
 # OR, if you're using react-native older than 0.31:
-rnpm link react-native-udp
+rnpm link react-native-udpsocket
 ```
 
 ### `Android`
+
+* support >= Android 7.0
 
 * Register and load the Native Module in your Main application
 ([import](examples/rctsockets/android/app/src/main/java/com/rctsockets/MainApplication.java#L11), [getPackages](examples/rctsockets/android/app/src/main/java/com/rctsockets/MainApplication.java#L28))
@@ -55,7 +57,7 @@ _only if you want to write require('dgram') in your javascript_
 ```json
 {
   "browser": {
-    "dgram": "react-native-udp"
+    "dgram": "react-native-udpsocket"
   }
 }
 ```
