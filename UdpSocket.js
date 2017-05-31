@@ -7,74 +7,70 @@
 
 /**
  * @providesModule UdpSocket
- * @flow
+ * @noflow
  */
 
-'use strict';
-
-var inherits = require('inherits')
-var EventEmitter = require('events').EventEmitter
-var {
-  DeviceEventEmitter,
-  NativeModules
-} = require('react-native');
-var Sockets = NativeModules.UdpSockets
-var base64 = require('base64-js')
-var ipRegex = require('ip-regex')
+import EventEmitter from 'events'
+import { DeviceEventEmitter, NativeModules } from 'react-native'
+import base64 from 'base64-js'
+import ipRegex from 'ip-regex'
 // RFC 952 hostname format
-var hostnameRegex = /^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$/;
-var noop = function () {}
-var instances = 0
-var STATE = {
+
+const noop = function() {}
+const Sockets = NativeModules.UdpSockets
+const hostnameRegex = /^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$/
+const STATE = {
   UNBOUND: 0,
   BINDING: 1,
-  BOUND: 2
+  BOUND: 2,
 }
 
-const noop = function () {}
+let instances = 0
 
-module.exports = UdpSocket
 
-function UdpSocket(options, onmessage) {
-  EventEmitter.call(this)
+export default class UdpSocket extends EventEmitter {
+  constructor(opts, onmessage) {
+    super()
 
-  if (typeof options === 'string') options = { type: options }
+    let options = opts
 
-  if (options.type !== 'udp4' && options.type !== 'udp6') {
-    throw new Error('invalid udp socket type')
+    if (typeof options === 'string') options = { type: options }
+
+    if (options.type !== 'udp4' && options.type !== 'udp6') {
+      throw new Error('invalid udp socket type')
+    }
+
+    this.type = options.type
+    this._ipv = Number(this.type.slice(3))
+    this._ipRegex = ipRegex['v' + this._ipv]({ exact: true })
+    this._id = instances++
+    this._state = STATE.UNBOUND
+    this._subscription = DeviceEventEmitter.addListener(
+      'udp-' + this._id + '-data',
+      this._onReceive.bind(this)
+    )
+
+    // ensure compatibility with node's EventEmitter
+    if (!this.on) this.on = this.addListener.bind(this)
+
+    if (onmessage) this.on('message', onmessage)
+
+    Sockets.createSocket(this._id, {
+      type: this.type,
+    }) // later
   }
-
-  this.type = options.type
-  this._ipv = Number(this.type.slice(3))
-  this._ipRegex = ipRegex['v' + this._ipv]({ exact: true })
-  this._id = instances++
-  this._state = STATE.UNBOUND
-  this._subscription = DeviceEventEmitter.addListener(
-    'udp-' + this._id + '-data', this._onReceive.bind(this)
-  );
-
-  // ensure compatibility with node's EventEmitter
-  if (!this.on) this.on = this.addListener.bind(this)
-
-  if (onmessage) this.on('message', onmessage)
-
-  Sockets.createSocket(this._id, {
-    type: this.type
-  }) // later
 }
-
-inherits(UdpSocket, EventEmitter)
 
 UdpSocket.prototype._debug = function() {
   if (__DEV__) {
-    var args = [].slice.call(arguments)
+    const args = [].slice.call(arguments)
     args.unshift('socket-' + this._id)
     console.log.apply(console, args)
   }
 }
 
 UdpSocket.prototype.bind = function(port, address, callback) {
-  var self = this
+  const self = this
 
   if (this._state !== STATE.UNBOUND) throw new Error('Socket is already bound')
 
@@ -91,8 +87,8 @@ UdpSocket.prototype.bind = function(port, address, callback) {
 
   this._state = STATE.BINDING
   this._debug('binding, address:', address, 'port:', port)
-  Sockets.bind(this._id, port, address, function(err, addr) {
-    err = normalizeError(err)
+  Sockets.bind(this._id, port, address, (error, addr) => {
+    const err = normalizeError(err)
     if (err) {
       // questionable: may want to self-destruct and
       // force user to create a new socket
@@ -110,7 +106,7 @@ UdpSocket.prototype.bind = function(port, address, callback) {
   })
 }
 
-UdpSocket.prototype.close = function (callback=noop) {
+UdpSocket.prototype.close = function(callback = noop) {
   if (this._destroyed) {
     return process.nextTick(callback)
   }
@@ -120,7 +116,7 @@ UdpSocket.prototype.close = function (callback=noop) {
 
   this._destroying = true
   this._debug('closing')
-  this._subscription.remove();
+  this._subscription.remove()
 
   Sockets.close(this._id, err => {
     if (err) return this.emit('error', err)
@@ -133,15 +129,15 @@ UdpSocket.prototype.close = function (callback=noop) {
 
 UdpSocket.prototype._onReceive = function(info) {
   // from base64 string
-  var buf = typeof Buffer === 'undefined'
+  const buf = typeof Buffer === 'undefined'
     ? base64.toByteArray(info.data)
     : new Buffer(info.data, 'base64')
 
-  var rinfo = {
+  const rinfo = {
     address: info.address,
     port: info.port,
     family: 'IPv4', // not necessarily
-    size: buf.length
+    size: buf.length,
   }
 
   this.emit('message', buf, rinfo)
@@ -170,44 +166,48 @@ UdpSocket.prototype._onReceive = function(info) {
  *                            Optional.
  */
 // UdpSocket.prototype.send = function (buf, host, port, cb) {
-UdpSocket.prototype.send = function(buffer, offset, length, port, address, callback) {
-  var self = this
+UdpSocket.prototype.send = function(
+  buffer,
+  offset,
+  length,
+  port,
+  address,
+  callback
+) {
+  const self = this
 
   if (typeof port !== 'number') throw new Error('invalid port')
-  if (!isValidIpOrHostname(address, this._ipRegex)) throw new Error('invalid address')
+  if (!isValidIpOrHostname(address, this._ipRegex))
+    throw new Error('invalid address')
 
   if (offset !== 0) throw new Error('Non-zero offset not supported yet')
 
   if (this._state === STATE.UNBOUND) {
-    var args = [].slice.call(arguments)
+    let args = [].slice.call(arguments)
     return this.bind(0, function(err) {
       if (err) return callback(err)
 
       self.send.apply(self, args)
     })
-  }
-  else if (this._state === STATE.BINDING) {
+  } else if (this._state === STATE.BINDING) {
     // we're ok, GCDAsync(Udp)Socket handles queueing internally
   }
 
   callback = callback || noop
-  var str
+  let str
   if (typeof buffer === 'string') {
     console.warn('socket.send(): interpreting as base64')
     str = buffer
-  }
-  else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(buffer)) {
+  } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(buffer)) {
     str = buffer.toString('base64')
-  }
-  else if (buffer instanceof Uint8Array || Array.isArray(buffer)) {
+  } else if (buffer instanceof Uint8Array || Array.isArray(buffer)) {
     str = base64.fromByteArray(buffer)
-  }
-  else {
+  } else {
     throw new Error('invalid message format')
   }
 
-  Sockets.send(this._id, str, +port, address, function(err) {
-    err = normalizeError(err)
+  Sockets.send(this._id, str, +port, address, (error) => {
+    const err = normalizeError(error)
     if (err) {
       self._debug('send failed', err)
       return callback(err)
@@ -225,12 +225,12 @@ UdpSocket.prototype.address = function() {
   return {
     address: this._address,
     port: this._port,
-    family: 'IPv4'
+    family: 'IPv4',
   }
 }
 
 UdpSocket.prototype.setBroadcast = function(flag) {
-  var self = this
+  let self = this
 
   if (this._state !== STATE.BOUND) {
     throw new Error('you must bind before setBroadcast()')
@@ -242,7 +242,7 @@ UdpSocket.prototype.setBroadcast = function(flag) {
       self._debug('failed to set broadcast', err)
       return self.emit('error', err)
     }
-  });
+  })
 }
 
 UdpSocket.prototype.setTTL = function(ttl) {
@@ -262,7 +262,7 @@ UdpSocket.prototype.addMembership = function(multicastAddress) {
     throw new Error('you must bind before addMembership()')
   }
 
-  Sockets.addMembership(this._id, multicastAddress);
+  Sockets.addMembership(this._id, multicastAddress)
 }
 
 UdpSocket.prototype.dropMembership = function(multicastAddress) {
@@ -270,7 +270,7 @@ UdpSocket.prototype.dropMembership = function(multicastAddress) {
     throw new Error('you must bind before addMembership()')
   }
 
-  Sockets.dropMembership(this._id, multicastAddress);
+  Sockets.dropMembership(this._id, multicastAddress)
 }
 
 UdpSocket.prototype.ref = function() {
@@ -281,15 +281,15 @@ UdpSocket.prototype.unref = function() {
   // anything?
 }
 
-function isValidIpOrHostname (address, ipRegex) {
+function isValidIpOrHostname(address, ipregex) {
   if (typeof address !== 'string') return false
 
-  return ipRegex.test(address) || hostnameRegex.test(address);
+  return ipregex.test(address) || hostnameRegex.test(address)
 }
 
-function normalizeError (err) {
+function normalizeError(err) {
   if (err) {
-    if (typeof err === 'string') err = new Error(err)
+    if (typeof err === 'string') return new Error(err)
 
     return err
   }

@@ -1,13 +1,13 @@
 
 /**
  * @providesModule UdpSockets
- * @flow
+ * @noflow
  */
 
-var UdpSocket = require('./UdpSocket');
+const UdpSocket = require('./UdpSocket');
 
 exports.createSocket = function(options) {
-  if (typeof options === 'string') options = { type: options }
+  if (typeof options === 'string') return { type: options }
   return new UdpSocket(options)
 }
 
