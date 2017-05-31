@@ -1,6 +1,6 @@
 {
-  "name": "react-native-udpsocket",
-  "version": "2.2.1",
+  "name": "react-native-udp",
+  "version": "2.2.2",
   "description": "node's dgram API for react-native, support react-native < 0.40.0",
   "main": "UdpSockets.js",
   "scripts": {
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/h124551753/react-native-udp"
+    "url": "https://github.com/netbeast/react-native-udp"
   },
   "keywords": [
     "react-component",
@@ -29,12 +29,11 @@
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/h124551753/react-native-udp/issues"
+    "url": "https://github.com/netbeast/react-native-udp/issues"
   },
-  "homepage": "https://github.com/h124551753/react-native-udp",
+  "homepage": "https://github.com/netbeast/react-native-udp",
   "dependencies": {
-    "base64-js": "0.0.8",
-    "events": "^1.0.2",
+    "base64-js": "^1.2.0",
     "inherits": "^2.0.1",
     "ip-regex": "^1.0.3",
     "util": "^0.10.3"
