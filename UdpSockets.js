@@ -4,11 +4,14 @@
  * @noflow
  */
 
-const UdpSocket = require('./UdpSocket');
+import UdpSocket from './UdpSocket'
 
-exports.createSocket = function(options) {
-  if (typeof options === 'string') return { type: options }
+export function createSocket (options) {
+  if (typeof options === 'string') {
+    return new UdpSocket({ type: options })
+  }
   return new UdpSocket(options)
 }
 
-exports.Socket = UdpSocket;
+export const Socket = UdpSocket
+
